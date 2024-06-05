@@ -23,6 +23,10 @@ export default defineConfig({
         {
           src: '../public/realm_locations_sold.csv',
           dest: '',
+        },
+        {
+          src: '../public/rxelms.csv',
+          dest: '',
         }
       ]
     })

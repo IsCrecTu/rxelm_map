@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // Function to load and parse CSV file
 async function loadCSV(path) {
@@ -32,6 +32,36 @@ async function loadCSV(path) {
     });
 }
 
+// Function to load and parse realms CSV file
+async function loadRealmsCSV(path) {
+    const response = await fetch(path);
+    if (!response.ok) {
+        throw new Error(`Failed to load CSV file: ${response.statusText}`);
+    }
+    const csvText = await response.text();
+    const lines = csvText.trim().split('\n');
+    const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+
+    const assignedRxelmIndex = headers.indexOf('assignedrxelm');
+    const partnerIndex = headers.indexOf('partner');
+    const rxelmNameIndex = headers.indexOf('rxelmname');
+    const rxelmColorIndex = headers.indexOf('rxelmcolor');
+
+    if (assignedRxelmIndex === -1 || partnerIndex === -1 || rxelmNameIndex === -1 || rxelmColorIndex === -1) {
+        throw new Error(`CSV file does not contain the required columns: Assigned Rxelm, Partner, Rxelm Name, Rxelm color: ${headers}`);
+    }
+
+    return lines.slice(1).map(line => {
+        const fields = line.split(',').map(field => field.trim().replace(/"/g, ''));
+        return { 
+            assignedRxelm: fields[assignedRxelmIndex], 
+            partner: fields[partnerIndex], 
+            rxelmName: fields[rxelmNameIndex], 
+            rxelmColor: fields[rxelmColorIndex]
+        };
+    });
+}
+
 // Function to generate a random color
 function getRandomColor() {
     const letters = '0123456789ABCDEF';
@@ -42,14 +72,9 @@ function getRandomColor() {
     return new THREE.Color(color);
 }
 
-// Define colors for realms
-const numRealms = 101;
-const realmColors = {};
-for (let i = 0; i < numRealms; i++) {
-    realmColors[`R${i + 1}`] = getRandomColor();
-}
-realmColors.default = new THREE.Color(0x00ffff);  // Cyan for any other realm
-realmColors.notListed = new THREE.Color(0x808080);  // Gray for blocks not listed in the CSV
+// Define default colors
+const defaultColor = new THREE.Color(0x00ffff);  // Cyan for any other realm
+const notListedColor = new THREE.Color(0x808080);  // Gray for blocks not listed in the CSV
 
 // Initialize the scene, camera, renderer, and controls
 const scene = new THREE.Scene();
@@ -75,9 +100,13 @@ tooltip.style.border = '1px solid #000';
 tooltip.style.display = 'none';
 document.body.appendChild(tooltip);
 
-// Load the CSV file and create the grid
-loadCSV('/realm_locations_sold.csv').then(parsedCSV => {
+// Load the CSV files and create the grid
+Promise.all([loadCSV('/realm_locations_sold.csv'), loadRealmsCSV('/rxelms.csv')]).then(([parsedCSV, realmsCSV]) => {
     console.log('CSV Loaded and Parsed:', parsedCSV);
+    console.log('Realms CSV Loaded and Parsed:', realmsCSV);
+
+    // Create a map for quick lookup of realm details
+    const realmsMap = new Map(realmsCSV.map(realm => [realm.assignedRxelm, realm]));
 
     // Create a map for quick lookup of sold blocks
     const soldBlocks = new Map(parsedCSV.map(block => [`${block.x},${block.y}`, block]));
@@ -105,12 +134,20 @@ loadCSV('/realm_locations_sold.csv').then(parsedCSV => {
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
             const blockKey = `${col},${row}`;
-            let color = realmColors.notListed;
+            let color = notListedColor;
 
             if (soldBlocks.has(blockKey)) {
                 const block = soldBlocks.get(blockKey);
-                console.log(`Block found at (${col}, ${row}) with realm ${block.realm}`);
-                color = realmColors[block.realm] || realmColors.default;
+                const realmDetails = realmsMap.get(block.realm);
+
+                if (realmDetails) {
+                    color = new THREE.Color(realmDetails.rxelmColor);
+                    block.partner = realmDetails.partner;
+                    block.rxelmName = realmDetails.rxelmName;
+                } else {
+                    color = defaultColor;
+                }
+
                 block.instanceId = instanceIndex;  // Store instance ID for raycasting
             }
 
@@ -160,7 +197,7 @@ loadCSV('/realm_locations_sold.csv').then(parsedCSV => {
             const intersectedBlock = parsedCSV.find(block => block.instanceId === instanceId);
 
             if (intersectedBlock) {
-                const info = intersectedBlock.fields.join('<br>');
+                const info = intersectedBlock.fields.join('<br>') + `<br>Partner: ${intersectedBlock.partner}<br>Rxelm Name: ${intersectedBlock.rxelmName}`;
                 tooltip.innerHTML = info;
                 tooltip.style.left = event.clientX + 'px';
                 tooltip.style.top = event.clientY + 'px';
