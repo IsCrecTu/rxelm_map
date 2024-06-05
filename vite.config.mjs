@@ -21,8 +21,8 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: 'public/realm_locations_sold.csv',
-          dest: ''
+          src: '../public/realm_locations_sold.csv',
+          dest: '',
         }
       ]
     })
