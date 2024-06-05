@@ -2,17 +2,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "src/**/*",
-      "use": "@vercel/static"
+      "src": "vite.config.js",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
-    { "src": "/", "dest": "/public/index.html" },
-    { "src": "/realm_locations_sold.csv", "dest": "/public/realm_locations_sold.csv" },
-    { "src": "/src/app.js", "dest": "/src/app.js" }
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
