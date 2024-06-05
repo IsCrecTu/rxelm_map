@@ -76,7 +76,7 @@ tooltip.style.display = 'none';
 document.body.appendChild(tooltip);
 
 // Load the CSV file and create the grid
-loadCSV('realm_locations_sold.csv').then(parsedCSV => {
+loadCSV('/realm_locations_sold.csv').then(parsedCSV => {
     console.log('CSV Loaded and Parsed:', parsedCSV);
 
     // Create a map for quick lookup of sold blocks
