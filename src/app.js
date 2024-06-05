@@ -100,6 +100,10 @@ tooltip.style.border = '1px solid #000';
 tooltip.style.display = 'none';
 document.body.appendChild(tooltip);
 
+// Variables to handle long touch
+let touchTimer;
+const longTouchDuration = 500; // 500 ms for long touch
+
 // Load the CSV files and create the grid
 Promise.all([loadCSV('/realm_locations_sold.csv'), loadRealmsCSV('/rxelms.csv')]).then(([parsedCSV, realmsCSV]) => {
     console.log('CSV Loaded and Parsed:', parsedCSV);
@@ -183,6 +187,7 @@ Promise.all([loadCSV('/realm_locations_sold.csv'), loadRealmsCSV('/rxelms.csv')]
 
     // Mouse move event
     window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('touchmove', onTouchMove);
 
     function onMouseMove(event) {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -208,21 +213,92 @@ Promise.all([loadCSV('/realm_locations_sold.csv'), loadRealmsCSV('/rxelms.csv')]
         }
     }
 
+    function onTouchMove(event) {
+        if (event.touches.length === 1) {
+            const touch = event.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+    
+            raycaster.setFromCamera(mouse, camera);
+    
+            const intersects = raycaster.intersectObject(instancedMesh);
+    
+            if (intersects.length > 0) {
+                const instanceId = intersects[0].instanceId;
+                const intersectedBlock = parsedCSV.find(block => block.instanceId === instanceId);
+    
+                if (intersectedBlock) {
+                    const info = intersectedBlock.fields.join('<br>') + `<br>Partner: ${intersectedBlock.partner}<br>Rxelm Name: ${intersectedBlock.rxelmName}`;
+                    tooltip.innerHTML = info;
+                    tooltip.style.left = touch.clientX + 'px';
+                    tooltip.style.top = touch.clientY + 'px';
+                    tooltip.style.display = 'block';
+                }
+            } else {
+                tooltip.style.display = 'none';
+            }
+        }
+    }
+
+    // Touch start event for long touch
+    window.addEventListener('touchstart', onTouchStart);
+    window.addEventListener('touchend', onTouchEnd);
+
+    function onTouchStart(event) {
+        if (event.touches.length === 1) {
+            touchTimer = setTimeout(() => {
+                const touch = event.touches[0];
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+
+                const intersects = raycaster.intersectObject(instancedMesh);
+
+                if (intersects.length > 0) {
+                    const instanceId = intersects[0].instanceId;
+                    const intersectedBlock = parsedCSV.find(block => block.instanceId === instanceId);
+
+                    if (intersectedBlock) {
+                        const info = intersectedBlock.fields.join('<br>') + `<br>Partner: ${intersectedBlock.partner}<br>Rxelm Name: ${intersectedBlock.rxelmName}`;
+                        tooltip.innerHTML = info;
+                        tooltip.style.left = touch.clientX + 'px';
+                        tooltip.style.top = touch.clientY + 'px';
+                        tooltip.style.display = 'block';
+                    }
+                }
+            }, longTouchDuration);
+        }
+    }
+
+    function onTouchEnd() {
+        clearTimeout(touchTimer);
+        tooltip.style.display = 'none';
+    }
+
     // Mouse click event
     window.addEventListener('click', onMouseClick);
+    window.addEventListener('touchstart', onMouseClick);
+
 
     function onMouseClick(event) {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-
+        if (event.type === 'touchstart') {
+            const touch = event.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+        } else {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+        }
+    
         raycaster.setFromCamera(mouse, camera);
-
+    
         const intersects = raycaster.intersectObject(instancedMesh);
-
+    
         if (intersects.length > 0) {
             const instanceId = intersects[0].instanceId;
             const intersectedBlock = parsedCSV.find(block => block.instanceId === instanceId);
-
+    
             if (intersectedBlock) {
                 const assetId = intersectedBlock.index;
                 const url = `https://allo.info/asset/${assetId}/nft/`;
