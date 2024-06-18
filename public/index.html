@@ -8,10 +8,25 @@
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        /* Style the search bar and results */
+        #search-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-    <script type="module" src="../src/app.js"></script>
+    <div id="search-bar">
+        <input type="text" id="wallet-input" placeholder="Enter Algorand Wallet Address">
+        <button id="search-button">Search</button>
+    </div>
+    <script type="module" src="../src/main.js"></script>
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
       </script>
