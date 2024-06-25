@@ -10,8 +10,10 @@ export async function fetchAlgorandAssets(walletAddress) {
         }
         const data = await response.json();
         
-        // Extract ASA IDs from the response
-        const asaIds = data.assets.map(asset => asset['asset-id']);
+        // Extract ASA IDs from the response where the amount is greater than 0
+        const asaIds = data.assets
+            .filter(asset => asset.amount > 0) // Only include assets with amount > 0
+            .map(asset => asset['asset-id']);
         return asaIds;
     } catch (error) {
         console.error('Error fetching ASAs:', error);
